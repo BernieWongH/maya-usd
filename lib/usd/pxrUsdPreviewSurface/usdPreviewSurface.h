@@ -48,6 +48,7 @@ PXR_NAMESPACE_OPEN_SCOPE
     ((NormalAttrName, "normal")) \
     ((OcclusionAttrName, "occlusion")) \
     ((OpacityAttrName, "opacity")) \
+    ((OpacityThresholdAttrName, "opacityThreshold")) \
     ((RoughnessAttrName, "roughness")) \
     ((SpecularColorAttrName, "specularColor")) \
     ((UseSpecularWorkflowAttrName, "useSpecularWorkflow")) \
@@ -94,6 +95,8 @@ class PxrMayaUsdPreviewSurface : public MPxNode
         static MObject occlusionAttr;
         PXRUSDPREVIEWSURFACE_API
         static MObject opacityAttr;
+        PXRUSDPREVIEWSURFACE_API
+        static MObject opacityThresholdAttr;
         PXRUSDPREVIEWSURFACE_API
         static MObject roughnessAttr;
         PXRUSDPREVIEWSURFACE_API

@@ -67,6 +67,7 @@ MObject PxrMayaUsdPreviewSurface::metallicAttr;
 MObject PxrMayaUsdPreviewSurface::normalAttr;
 MObject PxrMayaUsdPreviewSurface::occlusionAttr;
 MObject PxrMayaUsdPreviewSurface::opacityAttr;
+MObject PxrMayaUsdPreviewSurface::opacityThresholdAttr;
 MObject PxrMayaUsdPreviewSurface::roughnessAttr;
 MObject PxrMayaUsdPreviewSurface::specularColorAttr;
 MObject PxrMayaUsdPreviewSurface::useSpecularWorkflowAttr;
@@ -255,6 +256,24 @@ PxrMayaUsdPreviewSurface::initialize()
     status = addAttribute(opacityAttr);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
+    opacityThresholdAttr = numericAttrFn.create(
+        PxrMayaUsdPreviewSurfaceTokens->OpacityThresholdAttrName.GetText(),
+        "opt",
+        MFnNumericData::kFloat,
+        0.0,
+        &status);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = numericAttrFn.setSoftMin(0.0);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = numericAttrFn.setSoftMax(1.0);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = numericAttrFn.setKeyable(true);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = numericAttrFn.setAffectsAppearance(true);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = addAttribute(opacityThresholdAttr);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+
     roughnessAttr = numericAttrFn.create(
         PxrMayaUsdPreviewSurfaceTokens->RoughnessAttrName.GetText(),
         "rgh",
@@ -360,6 +379,8 @@ PxrMayaUsdPreviewSurface::initialize()
     CHECK_MSTATUS_AND_RETURN_IT(status);
     status = attributeAffects(opacityAttr, outColorAttr);
     CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = attributeAffects(opacityThresholdAttr, outColorAttr);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
     status = attributeAffects(roughnessAttr, outColorAttr);
     CHECK_MSTATUS_AND_RETURN_IT(status);
     status = attributeAffects(specularColorAttr, outColorAttr);
@@ -368,6 +389,8 @@ PxrMayaUsdPreviewSurface::initialize()
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     status = attributeAffects(opacityAttr, outTransparencyAttr);
+    CHECK_MSTATUS_AND_RETURN_IT(status);
+    status = attributeAffects(opacityThresholdAttr, outTransparencyAttr);
     CHECK_MSTATUS_AND_RETURN_IT(status);
 
     return status;
@@ -406,7 +429,16 @@ PxrMayaUsdPreviewSurface::compute(const MPlug& plug, MDataBlock& dataBlock)
         const MDataHandle opacityData =
             dataBlock.inputValue(opacityAttr, &status);
         CHECK_MSTATUS(status);
-        const float opacity = opacityData.asFloat();
+        float opacity = opacityData.asFloat();
+
+        const MDataHandle opacityThresholdData =
+            dataBlock.inputValue(opacityThresholdAttr, &status);
+        CHECK_MSTATUS(status);
+        const float opacityThreshold = opacityThresholdData.asFloat();
+        
+        if (opacity <= opacityThreshold) {
+            opacity = 0.0f;
+        }
 
         const float transparency = 1.0f - opacity;
         const MFloatVector transparencyColor(
