@@ -5,6 +5,8 @@
 *.settings/
 *.vs
 *.vscode
+.idea/
+cmake-build-debug/
 CMakeSettings.json
 CMakeCache.txt
 CMakeLists.txt.user
