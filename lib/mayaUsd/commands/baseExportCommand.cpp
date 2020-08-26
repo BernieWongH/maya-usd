@@ -92,7 +92,7 @@ MSyntax MayaUSDExportCommand::createSyntax()
                    MSyntax::kString);
     syntax.addFlag(kDefaultUSDFormatFlag,
                    UsdMayaJobExportArgsTokens->defaultUSDFormat.GetText(),
-                   MSyntax::kString);                   
+                   MSyntax::kString);
     syntax.addFlag(kExportVisibilityFlag,
                    UsdMayaJobExportArgsTokens->exportVisibility.GetText(),
                    MSyntax::kBoolean);
@@ -105,6 +105,9 @@ MSyntax MayaUSDExportCommand::createSyntax()
     syntax.addFlag(kExportSkinFlag,
                    UsdMayaJobExportArgsTokens->exportSkin.GetText(),
                    MSyntax::kString);
+    syntax.addFlag(kExportBlendShapesFlag,
+                   UsdMayaJobExportArgsTokens->exportBlendShapes.GetText(),
+                   MSyntax::kBoolean);
     syntax.addFlag(kParentScopeFlag,
                    UsdMayaJobExportArgsTokens->parentScope.GetText(),
                    MSyntax::kString);

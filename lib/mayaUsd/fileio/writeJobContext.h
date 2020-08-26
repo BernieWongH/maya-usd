@@ -17,6 +17,7 @@
 #define PXRUSDMAYA_WRITE_JOB_CONTEXT_H
 
 #include <memory>
+#include <vector>
 
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
@@ -135,6 +136,12 @@ public:
             const SdfPath& path,
             const SdfPath& skelPath,
             const TfToken& config);
+
+    MAYAUSD_CORE_PUBLIC
+    bool UpdateSkelBindingsWithExtent(
+        const UsdStagePtr& stage,
+        const VtVec3fArray& bbox,
+        const UsdTimeCode& timeSample);
 
 protected:
     /// Opens the stage with the given \p filename for writing.

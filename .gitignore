@@ -19,3 +19,10 @@ CMakeFiles/cmake.check_cache
 *.pbxuser
 *.swp
 *.pyc
+GTAGS
+GRTAGS
+GPATH
+*.dir-locals.el
+*.clang_complete
+compile_flags.txt
+compile_commands.json

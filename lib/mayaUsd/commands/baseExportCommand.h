@@ -64,6 +64,7 @@ class MAYAUSD_CORE_PUBLIC MayaUSDExportCommand : public MPxCommand
     static constexpr auto kExportReferenceObjectsFlag = "ero";
     static constexpr auto kExportSkelsFlag = "skl";
     static constexpr auto kExportSkinFlag = "skn";
+    static constexpr auto kExportBlendShapesFlag = "ebs";
     static constexpr auto kParentScopeFlag = "psc";
     static constexpr auto kRenderableOnlyFlag = "ro";
     static constexpr auto kDefaultCamerasFlag = "dc";

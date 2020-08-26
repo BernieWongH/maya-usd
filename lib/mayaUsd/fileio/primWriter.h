@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <maya/MBoundingBox.h>
 #include <maya/MDagPath.h>
 #include <maya/MFnDependencyNode.h>
 #include <maya/MObject.h>
@@ -204,6 +205,7 @@ private:
 
     bool _exportVisibility;
     bool _hasAnimCurves;
+    MBoundingBox _bbox;
 };
 
 typedef std::shared_ptr<UsdMayaPrimWriter> UsdMayaPrimWriterSharedPtr;

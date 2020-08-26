@@ -22,14 +22,21 @@
 #include <mayaUsd/fileio/utils/roundTripUtil.h>
 #include <mayaUsd/fileio/utils/writeUtil.h>
 
+#include <maya/MApiNamespace.h>
+#include <maya/MBoundingBox.h>
+#include <maya/MFnAttribute.h>
+#include <maya/MFnMesh.h>
 #include <maya/MFnSet.h>
 #include <maya/MGlobal.h>
 #include <maya/MIntArray.h>
+#include <maya/MItDependencyGraph.h>
 #include <maya/MItMeshFaceVertex.h>
 #include <maya/MPlug.h>
 #include <maya/MPlugArray.h>
+#include <maya/MPoint.h>
 #include <maya/MStatus.h>
 #include <maya/MUintArray.h>
+#include <maya/MVector.h>
 
 #include <pxr/base/gf/vec3f.h>
 #include <pxr/base/tf/diagnostic.h>
@@ -45,6 +52,164 @@
 #include <mayaUsd/base/debugCodes.h>
 #include <mayaUsd/utils/colorSpace.h>
 #include <mayaUsd/utils/util.h>
+
+#define MAYA_ATTR_NAME_INMESH "inMesh"
+
+MString mayaGetUniqueNameOfDAGNode(const MObject& node)
+{
+    assert(!node.isNull());
+    assert(node.hasFn(MFn::kDagNode));
+    MStatus    stat;
+    MFnDagNode fnNode(node, &stat);
+    CHECK_MSTATUS_AND_RETURN(stat, MString());
+    MString nodeName = fnNode.partialPathName(&stat);
+    return nodeName;
+}
+
+MPlug mayaFindChildPlugWithName(const MPlug& parent, const MString& name)
+{
+    MPlug sentinel;
+    if (!parent.isCompound() || parent.isNull()) {
+        return sentinel;
+    }
+    MStatus      stat;
+    unsigned int numChildren = parent.numChildren(&stat);
+    CHECK_MSTATUS_AND_RETURN(stat, sentinel);
+    if (numChildren == 0) {
+        return sentinel;
+    }
+
+    MFnAttribute fnAttr;
+
+    // TODO: (yliangsiew) for a certain threshold of child plugs, might want to
+    // binary search instead.
+    for (unsigned int i = 0; i < numChildren; ++i) {
+        MPlug plgChild = parent.child(i, &stat);
+        CHECK_MSTATUS_AND_RETURN(stat, sentinel);
+        MObject attrChild = plgChild.attribute(&stat);
+        CHECK_MSTATUS_AND_RETURN(stat, sentinel);
+        stat = fnAttr.setObject(attrChild);
+        CHECK_MSTATUS_AND_RETURN(stat, sentinel);
+        const MString attrName = fnAttr.name();
+        if (attrName == name) {
+            return plgChild;
+        }
+    }
+
+    return sentinel;
+}
+
+MStatus mayaGetSkinClusterConnectedToMesh(const MObject& mesh, MObject& skinCluster)
+{
+    // TODO: (yliangsiew) Do we care about multiple skinCluster layers? How do we even want
+    // to deal with that, if at all?
+    MStatus stat;
+    if (!mesh.hasFn(MFn::kMesh)) {
+        return MStatus::kInvalidParameter;
+    }
+
+    MFnDependencyNode fnNode(mesh, &stat);
+    CHECK_MSTATUS_AND_RETURN_IT(stat);
+
+    MPlug inMeshPlug = fnNode.findPlug(MAYA_ATTR_NAME_INMESH, false, &stat);
+    CHECK_MSTATUS_AND_RETURN_IT(stat);
+
+    bool isDest = inMeshPlug.isDestination(&stat);
+    CHECK_MSTATUS_AND_RETURN_IT(stat);
+    if (!isDest) {
+        return MStatus::kFailure;
+    }
+    MPlug srcPlug = inMeshPlug.source(&stat);
+    CHECK_MSTATUS_AND_RETURN_IT(stat);
+    if (srcPlug.isNull()) {
+        return MStatus::kFailure;
+    }
+
+    skinCluster = srcPlug.node(&stat);
+
+    CHECK_MSTATUS_AND_RETURN_IT(stat);
+    if (!skinCluster.hasFn(MFn::kSkinClusterFilter)) {
+        return MStatus::kFailure;
+    }
+
+    return stat;
+}
+
+MStatus mayaGetSkinClustersUpstreamOfMesh(const MObject& mesh, MObjectArray& skinClusters)
+{
+    MStatus stat;
+    if (!mesh.hasFn(MFn::kMesh)) {
+        return MStatus::kInvalidParameter;
+    }
+
+    skinClusters.clear();
+    MObject            searchObj = MObject(mesh);
+    MItDependencyGraph itDg(
+        searchObj,
+        MFn::kInvalid,
+        MItDependencyGraph::kUpstream,
+        MItDependencyGraph::kDepthFirst,
+        MItDependencyGraph::kNodeLevel,
+        &stat);
+    while (!itDg.isDone()) {
+        MObject curNode = itDg.currentItem();
+        if (curNode.hasFn(MFn::kSkinClusterFilter)) {
+            skinClusters.append(curNode);
+        }
+        itDg.next();
+    }
+
+    return stat;
+}
+
+bool mayaSearchMIntArray(const int a, const MIntArray& array, unsigned int* idx)
+{
+    for (unsigned int i = 0; i < array.length(); ++i) {
+        if (array[i] == a) {
+            if (idx != NULL) {
+                *idx = i;
+            }
+            return true;
+        }
+    }
+    if (idx != NULL) {
+        *idx = -1;
+    }
+    return false;
+}
+
+MBoundingBox mayaCalcBBoxOfMeshes(const MObjectArray& meshes)
+{
+    unsigned int numMeshes = meshes.length();
+    MFnMesh      fnMesh;
+    MStatus      stat;
+    MVector      a;
+    MVector      b;
+    for (unsigned int i = 0; i < numMeshes; ++i) {
+        MObject curMesh = meshes[i];
+        assert(curMesh.hasFn(MFn::kMesh));
+        fnMesh.setObject(curMesh);
+        unsigned int numVertices = fnMesh.numVertices();
+        const float* meshPts = fnMesh.getRawPoints(&stat);
+        for (unsigned int j = 0; j < numVertices; ++j) {
+            float x = meshPts[j * 3];
+            float y = meshPts[(j * 3) + 1];
+            float z = meshPts[(j * 3) + 2];
+
+            a.x = x < a.x ? x : a.x;
+            b.x = x > b.x ? x : b.x;
+
+            a.y = y < a.y ? y : a.y;
+            b.y = y > b.y ? y : b.y;
+
+            a.z = z < a.z ? z : a.z;
+            b.z = z > b.z ? z : b.z;
+        }
+    }
+
+    MBoundingBox result = MBoundingBox(MPoint(a), MPoint(b));
+    return result;
+}
 
 PXR_NAMESPACE_OPEN_SCOPE
 
@@ -238,7 +403,7 @@ namespace
         }
     }
 
-    void 
+    void
     createUVPrimVar( UsdGeomGprim &primSchema,
                      const TfToken& name,
                      const UsdTimeCode& usdTime,
@@ -258,11 +423,11 @@ namespace
         }
 
         SdfValueTypeName uvValueType = (UsdMayaWriteUtil::WriteUVAsFloat2())?
-            (SdfValueTypeNames->Float2Array) : (SdfValueTypeNames->TexCoord2fArray); 
+            (SdfValueTypeNames->Float2Array) : (SdfValueTypeNames->TexCoord2fArray);
 
         UsdGeomPrimvar primVar = primSchema.CreatePrimvar(name, uvValueType, interp);
 
-        setPrimvar(primVar, 
+        setPrimvar(primVar,
                    assignmentIndices,
                    VtValue(data),
                    VtValue(UnauthoredUV),
@@ -613,11 +778,11 @@ UsdMayaMeshWriteUtils::assignSubDivTagsToUSDPrim(MFnMesh& meshFn,
         }
 
         // not animatable
-        UsdMayaWriteUtil::SetAttribute(primSchema.GetCornerIndicesAttr(), 
+        UsdMayaWriteUtil::SetAttribute(primSchema.GetCornerIndicesAttr(),
                                       &subdCornerIndices, UsdTimeCode::Default(), valueWriter);
 
         // not animatable
-        UsdMayaWriteUtil::SetAttribute(primSchema.GetCornerSharpnessesAttr(), 
+        UsdMayaWriteUtil::SetAttribute(primSchema.GetCornerSharpnessesAttr(),
                                        &subdCornerSharpnesses, UsdTimeCode::Default(), valueWriter);
     }
 
@@ -634,7 +799,7 @@ UsdMayaMeshWriteUtils::assignSubDivTagsToUSDPrim(MFnMesh& meshFn,
         // just construct directly from the array data
         // by moving this out of the loop, you'll leverage SIMD ops here.
         std::vector<float> subdCreaseSharpnesses(&mayaCreaseEdgeValues[0], &mayaCreaseEdgeValues[0] + mayaCreaseEdgeValues.length());
-        // avoid dso call by taking a copy of length. 
+        // avoid dso call by taking a copy of length.
         for (unsigned int i = 0u, n = mayaCreaseEdgeIds.length(); i < n; ++i) {
             meshFn.getEdgeVertices(mayaCreaseEdgeIds[i], edgeVerts);
             subdCreaseIndices[i * 2] = edgeVerts[0];
@@ -693,10 +858,10 @@ UsdMayaMeshWriteUtils::writePointsData(const MFnMesh& meshFn,
     UsdMayaWriteUtil::SetAttribute(primSchema.CreateExtentAttr(), &extent, usdTime, valueWriter);
 }
 
-void 
-UsdMayaMeshWriteUtils::writeFaceVertexIndicesData(const MFnMesh& meshFn, 
-                                                  UsdGeomMesh& primSchema, 
-                                                  const UsdTimeCode& usdTime, 
+void
+UsdMayaMeshWriteUtils::writeFaceVertexIndicesData(const MFnMesh& meshFn,
+                                                  UsdGeomMesh& primSchema,
+                                                  const UsdTimeCode& usdTime,
                                                   UsdUtilsSparseValueWriter* valueWriter)
 {
     const int numFaceVertices = meshFn.numFaceVertices();
@@ -718,9 +883,9 @@ UsdMayaMeshWriteUtils::writeFaceVertexIndicesData(const MFnMesh& meshFn,
     UsdMayaWriteUtil::SetAttribute(primSchema.GetFaceVertexIndicesAttr(), &faceVertexIndices, usdTime, valueWriter);
 }
 
-void 
-UsdMayaMeshWriteUtils::writeInvisibleFacesData(const MFnMesh& meshFn, 
-                                               UsdGeomMesh& primSchema, 
+void
+UsdMayaMeshWriteUtils::writeInvisibleFacesData(const MFnMesh& meshFn,
+                                               UsdGeomMesh& primSchema,
                                                UsdUtilsSparseValueWriter* valueWriter)
 {
     MUintArray mayaHoles = meshFn.getInvisibleFaces();
@@ -799,10 +964,10 @@ UsdMayaMeshWriteUtils::getMeshUVSetData(const MFnMesh& mesh,
     return true;
 }
 
-bool 
-UsdMayaMeshWriteUtils::writeUVSetsAsVec2fPrimvars(const MFnMesh& meshFn, 
-                                                  UsdGeomMesh& primSchema, 
-                                                  const UsdTimeCode& usdTime, 
+bool
+UsdMayaMeshWriteUtils::writeUVSetsAsVec2fPrimvars(const MFnMesh& meshFn,
+                                                  UsdGeomMesh& primSchema,
+                                                  const UsdTimeCode& usdTime,
                                                   UsdUtilsSparseValueWriter* valueWriter)
 {
     MStatus status{MS::kSuccess};
@@ -849,34 +1014,34 @@ UsdMayaMeshWriteUtils::writeUVSetsAsVec2fPrimvars(const MFnMesh& meshFn,
     return true;
 }
 
-void 
-UsdMayaMeshWriteUtils::writeSubdivInterpBound(MFnMesh& meshFn, 
-                                              UsdGeomMesh& primSchema, 
+void
+UsdMayaMeshWriteUtils::writeSubdivInterpBound(MFnMesh& meshFn,
+                                              UsdGeomMesh& primSchema,
                                               UsdUtilsSparseValueWriter* valueWriter)
 {
     TfToken sdInterpBound = UsdMayaMeshWriteUtils::getSubdivInterpBoundary(meshFn);
     if (!sdInterpBound.IsEmpty()) {
-        UsdMayaWriteUtil::SetAttribute(primSchema.CreateInterpolateBoundaryAttr(), 
+        UsdMayaWriteUtil::SetAttribute(primSchema.CreateInterpolateBoundaryAttr(),
                                        sdInterpBound, UsdTimeCode::Default(), valueWriter);
     }
 }
 
-void 
-UsdMayaMeshWriteUtils::writeSubdivFVLinearInterpolation(MFnMesh& meshFn, 
-                                                        UsdGeomMesh& primSchema, 
+void
+UsdMayaMeshWriteUtils::writeSubdivFVLinearInterpolation(MFnMesh& meshFn,
+                                                        UsdGeomMesh& primSchema,
                                                         UsdUtilsSparseValueWriter* valueWriter)
 {
     TfToken sdFVLinearInterpolation = UsdMayaMeshWriteUtils::getSubdivFVLinearInterpolation(meshFn);
     if (!sdFVLinearInterpolation.IsEmpty()) {
-        UsdMayaWriteUtil::SetAttribute(primSchema.CreateFaceVaryingLinearInterpolationAttr(), 
+        UsdMayaWriteUtil::SetAttribute(primSchema.CreateFaceVaryingLinearInterpolationAttr(),
                                        sdFVLinearInterpolation, UsdTimeCode::Default(), valueWriter);
     }
 }
 
-void 
-UsdMayaMeshWriteUtils::writeNormalsData(const MFnMesh& meshFn, 
-                                        UsdGeomMesh& primSchema, 
-                                        const UsdTimeCode& usdTime, 
+void
+UsdMayaMeshWriteUtils::writeNormalsData(const MFnMesh& meshFn,
+                                        UsdGeomMesh& primSchema,
+                                        const UsdTimeCode& usdTime,
                                         UsdUtilsSparseValueWriter* valueWriter)
 {
     VtVec3fArray meshNormals;
@@ -890,7 +1055,7 @@ UsdMayaMeshWriteUtils::writeNormalsData(const MFnMesh& meshFn,
     }
 }
 
-bool 
+bool
 UsdMayaMeshWriteUtils::addDisplayPrimvars(UsdGeomGprim &primSchema,
                                           const UsdTimeCode& usdTime,
                                           const MFnMesh::MColorRepresentation colorRep,
@@ -970,7 +1135,7 @@ UsdMayaMeshWriteUtils::addDisplayPrimvars(UsdGeomGprim &primSchema,
     return true;
 }
 
-bool 
+bool
 UsdMayaMeshWriteUtils::createRGBPrimVar(UsdGeomGprim &primSchema,
                                         const TfToken& name,
                                         const UsdTimeCode& usdTime,
@@ -1007,7 +1172,7 @@ UsdMayaMeshWriteUtils::createRGBPrimVar(UsdGeomGprim &primSchema,
     return true;
 }
 
-bool 
+bool
 UsdMayaMeshWriteUtils::createRGBAPrimVar(UsdGeomGprim &primSchema,
                                          const TfToken& name,
                                          const UsdTimeCode& usdTime,
@@ -1053,7 +1218,7 @@ UsdMayaMeshWriteUtils::createRGBAPrimVar(UsdGeomGprim &primSchema,
     return true;
 }
 
-bool 
+bool
 UsdMayaMeshWriteUtils::createAlphaPrimVar(UsdGeomGprim &primSchema,
                                           const TfToken& name,
                                           const UsdTimeCode& usdTime,
@@ -1091,7 +1256,7 @@ UsdMayaMeshWriteUtils::createAlphaPrimVar(UsdGeomGprim &primSchema,
     return true;
 }
 
-bool 
+bool
 UsdMayaMeshWriteUtils::getMeshColorSetData(MFnMesh& mesh,
                                            const MString& colorSet,
                                            bool isDisplayColor,
@@ -1178,11 +1343,11 @@ UsdMayaMeshWriteUtils::getMeshColorSetData(MFnMesh& mesh,
                 if (shadersRGBData.size() == 1) {
                     valueIndex = 0;
                 }
-            } else if (faceIndex >= 0 && 
+            } else if (faceIndex >= 0 &&
                 static_cast<size_t>(faceIndex) < shadersAssignmentIndices.size()) {
 
                 int tmpIndex = shadersAssignmentIndices[faceIndex];
-                if (tmpIndex >= 0 && 
+                if (tmpIndex >= 0 &&
                     static_cast<size_t>(tmpIndex) < shadersRGBData.size()) {
                     valueIndex = tmpIndex;
                 }
@@ -1204,10 +1369,10 @@ UsdMayaMeshWriteUtils::getMeshColorSetData(MFnMesh& mesh,
                 if (shadersAlphaData.size() == 1) {
                     valueIndex = 0;
                 }
-            } else if (faceIndex >= 0 && 
+            } else if (faceIndex >= 0 &&
                 static_cast<size_t>(faceIndex) < shadersAssignmentIndices.size()) {
                 int tmpIndex = shadersAssignmentIndices[faceIndex];
-                if (tmpIndex >= 0 && 
+                if (tmpIndex >= 0 &&
                     static_cast<size_t>(tmpIndex) < shadersAlphaData.size()) {
                     valueIndex = tmpIndex;
                 }
@@ -1225,14 +1390,14 @@ UsdMayaMeshWriteUtils::getMeshColorSetData(MFnMesh& mesh,
             GfVec3f rgbValue = UnauthoredColorSetRGB;
             float alphaValue = UnauthoredColorAlpha;
 
-            if (useShaderColorFallback              || 
-                    (*colorSetRep == MFnMesh::kRGB) || 
+            if (useShaderColorFallback              ||
+                    (*colorSetRep == MFnMesh::kRGB) ||
                     (*colorSetRep == MFnMesh::kRGBA)) {
                 rgbValue = LinearColorFromColorSet(colorSetData[fvi],
                                                    convertDisplayColorToLinear);
             }
-            if (useShaderAlphaFallback                || 
-                    (*colorSetRep == MFnMesh::kAlpha) || 
+            if (useShaderAlphaFallback                ||
+                    (*colorSetRep == MFnMesh::kAlpha) ||
                     (*colorSetRep == MFnMesh::kRGBA)) {
                 alphaValue = colorSetData[fvi][3];
             }

@@ -45,10 +45,10 @@ PXR_NAMESPACE_OPEN_SCOPE
 TF_DEFINE_PUBLIC_TOKENS(UsdMayaTranslatorTokens,
         PXRUSDMAYA_TRANSLATOR_TOKENS);
 
-TF_DEFINE_PUBLIC_TOKENS(UsdMayaJobExportArgsTokens, 
+TF_DEFINE_PUBLIC_TOKENS(UsdMayaJobExportArgsTokens,
         PXRUSDMAYA_JOB_EXPORT_ARGS_TOKENS);
 
-TF_DEFINE_PUBLIC_TOKENS(UsdMayaJobImportArgsTokens, 
+TF_DEFINE_PUBLIC_TOKENS(UsdMayaJobImportArgsTokens,
         PXRUSDMAYA_JOB_IMPORT_ARGS_TOKENS);
 
 TF_DEFINE_PRIVATE_TOKENS(
@@ -139,7 +139,7 @@ _AbsolutePath(const VtDictionary& userArgs, const TfToken& key)
 
 /// Extracts an vector<T> from the vector<VtValue> at \p key in \p userArgs.
 /// Returns an empty vector if it can't convert the entire value at \p key into
-/// a vector<T>. 
+/// a vector<T>.
 template <typename T>
 static std::vector<T>
 _Vector(const VtDictionary& userArgs, const TfToken& key)
@@ -304,7 +304,7 @@ UsdMayaJobExportArgs::UsdMayaJobExportArgs(
                 UsdUsdcFileFormatTokens->Id,
                 {
                     UsdUsdaFileFormatTokens->Id
-                })),                 
+                })),
         eulerFilter(
             _Boolean(userArgs, UsdMayaJobExportArgsTokens->eulerFilter)),
         excludeInvisible(
@@ -349,6 +349,8 @@ UsdMayaJobExportArgs::UsdMayaJobExportArgs(
                     UsdMayaJobExportArgsTokens->auto_,
                     UsdMayaJobExportArgsTokens->explicit_
                 })),
+        exportBlendShapes(
+            _Boolean(userArgs, UsdMayaJobExportArgsTokens->exportBlendShapes)),
         exportVisibility(
             _Boolean(userArgs, UsdMayaJobExportArgsTokens->exportVisibility)),
         materialCollectionsPath(
@@ -430,6 +432,7 @@ operator <<(std::ostream& out, const UsdMayaJobExportArgs& exportArgs)
         << "exportRefsAsInstanceable: " << TfStringify(exportArgs.exportRefsAsInstanceable) << std::endl
         << "exportSkels: " << TfStringify(exportArgs.exportSkels) << std::endl
         << "exportSkin: " << TfStringify(exportArgs.exportSkin) << std::endl
+        << "exportBlendShapes: " << TfStringify(exportArgs.exportBlendShapes) << std::endl
         << "exportVisibility: " << TfStringify(exportArgs.exportVisibility) << std::endl
         << "materialCollectionsPath: " << exportArgs.materialCollectionsPath << std::endl
         << "materialsScopeName: " << exportArgs.materialsScopeName << std::endl
@@ -461,7 +464,7 @@ operator <<(std::ostream& out, const UsdMayaJobExportArgs& exportArgs)
 
     out << "chaserNames (" << exportArgs.chaserNames.size() << ")" << std::endl;
     for (const std::string& chaserName : exportArgs.chaserNames) {
-        out << "    " << chaserName << std::endl;        
+        out << "    " << chaserName << std::endl;
     }
 
     out << "allChaserArgs (" << exportArgs.allChaserArgs.size() << ")" << std::endl;
@@ -504,9 +507,9 @@ UsdMayaJobExportArgs::GetDefaultDictionary()
         d[UsdMayaJobExportArgsTokens->compatibility] =
                 UsdMayaJobExportArgsTokens->none.GetString();
         d[UsdMayaJobExportArgsTokens->defaultCameras] = false;
-        d[UsdMayaJobExportArgsTokens->defaultMeshScheme] = 
+        d[UsdMayaJobExportArgsTokens->defaultMeshScheme] =
                 UsdGeomTokens->catmullClark.GetString();
-        d[UsdMayaJobExportArgsTokens->defaultUSDFormat] = 
+        d[UsdMayaJobExportArgsTokens->defaultUSDFormat] =
                 UsdUsdcFileFormatTokens->Id.GetString();
         d[UsdMayaJobExportArgsTokens->eulerFilter] = false;
         d[UsdMayaJobExportArgsTokens->exportCollectionBasedBindings] = false;
@@ -520,6 +523,7 @@ UsdMayaJobExportArgs::GetDefaultDictionary()
                 UsdMayaJobExportArgsTokens->none.GetString();
         d[UsdMayaJobExportArgsTokens->exportSkels] =
                 UsdMayaJobExportArgsTokens->none.GetString();
+        d[UsdMayaJobExportArgsTokens->exportBlendShapes] = false;
         d[UsdMayaJobExportArgsTokens->exportUVs] = true;
         d[UsdMayaJobExportArgsTokens->exportVisibility] = true;
         d[UsdMayaJobExportArgsTokens->kind] = std::string();
