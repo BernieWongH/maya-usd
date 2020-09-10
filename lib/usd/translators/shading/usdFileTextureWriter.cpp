@@ -210,6 +210,12 @@ PxrUsdTranslators_FileTextureWriter::Write(const UsdTimeCode& usdTime)
         return;
     }
 
+    // NOTE: (yliangsiew) This code causes relative texture file paths
+    // to become "baked" as absolute texture file paths instead. Also,
+    // probably could just use minimal OS wrapper functions like
+    // `PathRelativePathTo` or similar to generate the path rather
+    // than use boost for such a purpose...
+#if 0
     // WARNING: This extremely minimal attempt at making the file path relative
     //          to the USD stage is a stopgap measure intended to provide
     //          minimal interop. It will be replaced by proper use of Maya and
@@ -221,6 +227,7 @@ PxrUsdTranslators_FileTextureWriter::Write(const UsdTimeCode& usdTime)
     if (!ec && !relativePath.empty()) {
         fileTextureName = relativePath.generic_string();
     }
+#endif
 
     shaderSchema.CreateInput(
         _tokens->file,
