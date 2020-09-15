@@ -23,6 +23,7 @@
 #include <maya/MDataBlock.h>
 #include <maya/MDataHandle.h>
 #include <maya/MFloatVector.h>
+#include <maya/MFnDependencyNode.h>
 #include <maya/MFnNumericAttribute.h>
 #include <maya/MFnNumericData.h>
 #include <maya/MGlobal.h>
@@ -89,6 +90,22 @@ MStatus
 PxrMayaUsdPreviewSurface::initialize()
 {
     MStatus status;
+
+    MObject clearcoatAttr;
+    MObject clearcoatRoughnessAttr;
+    MObject diffuseColorAttr;
+    MObject displacementAttr;
+    MObject emissiveColorAttr;
+    MObject iorAttr;
+    MObject metallicAttr;
+    MObject normalAttr;
+    MObject occlusionAttr;
+    MObject opacityAttr;
+    MObject roughnessAttr;
+    MObject specularColorAttr;
+    MObject useSpecularWorkflowAttr;
+    MObject outColorAttr;
+    MObject outTransparencyAttr;
 
     MFnNumericAttribute numericAttrFn;
 
@@ -411,10 +428,15 @@ PxrMayaUsdPreviewSurface::compute(const MPlug& plug, MDataBlock& dataBlock)
 
     // XXX: For now, we simply propagate diffuseColor to outColor and
     // opacity to outTransparency.
-
+    MFnDependencyNode depNodeFn(thisMObject());
+    MObject           outColorAttr
+        = depNodeFn.attribute(PxrMayaUsdPreviewSurfaceTokens->OutColorAttrName.GetText());
+    MObject outTransparencyAttr
+        = depNodeFn.attribute(PxrMayaUsdPreviewSurfaceTokens->OutTransparencyAttrName.GetText());
     if (plug == outColorAttr) {
-        const MDataHandle diffuseColorData =
-            dataBlock.inputValue(diffuseColorAttr, &status);
+        MObject diffuseColorAttr
+            = depNodeFn.attribute(PxrMayaUsdPreviewSurfaceTokens->DiffuseColorAttrName.GetText());
+        const MDataHandle diffuseColorData = dataBlock.inputValue(diffuseColorAttr, &status);
         CHECK_MSTATUS(status);
         const MFloatVector diffuseColor = diffuseColorData.asFloatVector();
 
@@ -424,10 +446,10 @@ PxrMayaUsdPreviewSurface::compute(const MPlug& plug, MDataBlock& dataBlock)
         outColorHandle.asFloatVector() = diffuseColor;
         status = dataBlock.setClean(outColorAttr);
         CHECK_MSTATUS(status);
-    }
-    else if (plug == outTransparencyAttr) {
-        const MDataHandle opacityData =
-            dataBlock.inputValue(opacityAttr, &status);
+    } else if (plug == outTransparencyAttr) {
+        MObject opacityAttr
+            = depNodeFn.attribute(PxrMayaUsdPreviewSurfaceTokens->OpacityAttrName.GetText());
+        const MDataHandle opacityData = dataBlock.inputValue(opacityAttr, &status);
         CHECK_MSTATUS(status);
         float opacity = opacityData.asFloat();
 

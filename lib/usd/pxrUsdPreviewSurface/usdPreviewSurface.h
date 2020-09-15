@@ -37,7 +37,6 @@ PXR_NAMESPACE_OPEN_SCOPE
 
 
 #define PXRUSDPREVIEWSURFACE_USD_PREVIEW_SURFACE_TOKENS \
-    ((MayaTypeName, "pxrUsdPreviewSurface")) \
     ((ClearcoatAttrName, "clearcoat")) \
     ((ClearcoatRoughnessAttrName, "clearcoatRoughness")) \
     ((DiffuseColorAttrName, "diffuseColor")) \
