@@ -275,7 +275,6 @@ PxrMayaUsdPreviewSurface_Writer::Write(const UsdTimeCode& usdTime)
     // Opacity Threshold
     _AuthorShaderInputFromShadingNodeAttr(
         depNodeFn,
-        PxrMayaUsdPreviewSurface::opacityThresholdAttr,
         shaderSchema,
         PxrMayaUsdPreviewSurfaceTokens->OpacityThresholdAttrName,
         SdfValueTypeNames->Float,
