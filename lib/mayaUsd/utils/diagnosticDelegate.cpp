@@ -135,7 +135,7 @@ UsdMayaDiagnosticDelegate::IssueWarning(const TfWarning& warning)
     }
 
     if (ArchIsMainThread()) {
-        MGlobal::displayWarning(warning.GetCommentary().c_str());
+        MGlobal::displayWarning(MString(warning.GetCommentary().c_str()));
     }
     else {
         std::cerr << _FormatDiagnostic(warning) << std::endl;

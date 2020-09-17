@@ -175,10 +175,10 @@ bool
 _FindDagPoseMembers(
         const MFnDependencyNode& dagPoseDep,
         const std::vector<MDagPath>& dagPaths,
-        std::vector<unsigned int>* indices)
+        std::vector<unsigned int>& indices)
 {
     MStatus status;
-    MPlug membersPlug = dagPoseDep.findPlug("members", &status);
+    MPlug membersPlug = dagPoseDep.findPlug("members", false, &status);
     CHECK_MSTATUS_AND_RETURN(status, false);
 
     // Build a map of dagPath->index.
@@ -196,8 +196,8 @@ _FindDagPoseMembers(
 
     MPlugArray inputs;
 
-    indices->clear();
-    indices->resize(std::min(membersPlug.numElements(),
+    indices.clear();
+    indices.resize(std::max(membersPlug.numElements(),
                              static_cast<unsigned int>(dagPaths.size())), -1);
 
     for (unsigned int i = 0; i < membersPlug.numElements(); ++i) {
@@ -209,18 +209,19 @@ _FindDagPoseMembers(
             MObjectHandle connNode(inputs[j].node());
             auto it = pathIndexMap.find(connNode);
             if (it != pathIndexMap.end()) {
-                (*indices)[it->second] = i;
+                indices[it->second] = i;
             }
         }
     }
 
     // Validate that all of the input dagPaths are members.
-    for (size_t i = 0; i < indices->size(); ++i) {
-        int index = (*indices)[i];
+    for (size_t i = 0; i < indices.size(); ++i) {
+        int index = indices[i];
         if (index < 0) {
             TF_WARN("Node '%s' is not a member of dagPose '%s'.",
                     MFnDependencyNode(dagPaths[i].node()).name().asChar(),
                     dagPoseDep.name().asChar());
+
             return false;
         }
     }
@@ -275,7 +276,7 @@ _GetJointLocalRestTransformsFromDagPose(
     CHECK_MSTATUS_AND_RETURN(status, false);
 
     std::vector<unsigned int> memberIndices;
-    if (!_FindDagPoseMembers(bindPoseDep, jointDagPaths, &memberIndices)) {
+    if (!_FindDagPoseMembers(bindPoseDep, jointDagPaths, memberIndices)) {
         return false;
     }
 
