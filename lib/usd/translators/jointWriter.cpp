@@ -197,8 +197,10 @@ _FindDagPoseMembers(
     MPlugArray inputs;
 
     indices.clear();
+    // TODO: (yliangsiew) Need to know why we even have mismatched array sizes here.
     indices.resize(std::max(membersPlug.numElements(),
                              static_cast<unsigned int>(dagPaths.size())), -1);
+
 
     for (unsigned int i = 0; i < membersPlug.numElements(); ++i) {
 
@@ -215,7 +217,7 @@ _FindDagPoseMembers(
     }
 
     // Validate that all of the input dagPaths are members.
-    for (size_t i = 0; i < indices.size(); ++i) {
+    for (size_t i = 0; i < dagPaths.size(); ++i) {
         int index = indices[i];
         if (index < 0) {
             TF_WARN("Node '%s' is not a member of dagPose '%s'.",
