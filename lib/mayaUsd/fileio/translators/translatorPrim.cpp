@@ -34,6 +34,7 @@ UsdMayaTranslatorPrim::Read(
         UsdMayaPrimReaderContext* context)
 {
     UsdGeomImageable primSchema(prim);
+    MTime::Unit timeUnit = MTime::uiUnit();
     if (!primSchema) {
         TF_CODING_ERROR("Prim %s is not UsdGeomImageable.", 
                 prim.GetPath().GetText());
@@ -85,7 +86,7 @@ UsdMayaTranslatorPrim::Read(
         MTimeArray timeArray;
         timeArray.setLength(numTimeSamples);
         for (unsigned int ti=0; ti < numTimeSamples; ++ti) {
-            timeArray.set( MTime(visTimeSamples[ti]), ti);
+            timeArray.set( MTime(visTimeSamples[ti], timeUnit), ti);
         }
 
         // Add the keys

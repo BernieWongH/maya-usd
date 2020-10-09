@@ -119,7 +119,7 @@ _GetTimeAndValueArrayForUsdAttribute(
     }
 
     size_t numTimeSamples = timeSamples.size();
-
+    MTime::Unit timeUnit = MTime::uiUnit();
     for (size_t i = 0; i < numTimeSamples; ++i) {
         const double timeSample = timeSamples[i];
         float attrValue;
@@ -139,7 +139,7 @@ _GetTimeAndValueArrayForUsdAttribute(
                 break;
         }
 
-        timeArray->set(MTime(timeSample), i);
+        timeArray->set(MTime(timeSample, timeUnit), i);
         valueArray->set(attrValue, i);
     }
 
@@ -172,6 +172,7 @@ _GetTimeAndValueArraysForUsdAttribute(
 
     size_t numTimeSamples = timeSamples.size();
     valueArray2->setLength(numTimeSamples);
+    MTime::Unit timeUnit = MTime::uiUnit();
 
     for (size_t i = 0; i < numTimeSamples; ++i) {
         const double timeSample = timeSamples[i];
@@ -179,7 +180,7 @@ _GetTimeAndValueArraysForUsdAttribute(
         if (!usdAttr.Get(&attrValue, timeSample)) {
             return false;
         }
-        timeArray->set(MTime(timeSample), i);
+        timeArray->set(MTime(timeSample, timeUnit), i);
         valueArray1->set(attrValue[0], i);
         valueArray2->set(attrValue[1], i);
     }

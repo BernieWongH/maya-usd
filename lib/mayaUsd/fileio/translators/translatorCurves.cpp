@@ -250,10 +250,11 @@ UsdMayaTranslatorCurves::Create(
         MFnAnimCurve animFn;
 
         // Construct the time array to be used for all the keys
+        MTime::Unit timeUnit = MTime::uiUnit();
         MTimeArray timeArray;
         timeArray.setLength(numTimeSamples);
         for (unsigned int ti=0; ti < numTimeSamples; ++ti) {
-            timeArray.set( MTime(pointsTimeSamples[ti]), ti);
+            timeArray.set( MTime(pointsTimeSamples[ti], timeUnit), ti);
         }
 
         // Key/Animate the weights

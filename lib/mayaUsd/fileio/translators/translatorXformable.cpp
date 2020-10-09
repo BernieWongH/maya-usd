@@ -207,6 +207,8 @@ static bool _pushUSDXformOpToMayaXform(
         const UsdMayaPrimReaderArgs& args,
         const UsdMayaPrimReaderContext* context)
 {
+    MTime::Unit timeUnit = MTime::uiUnit();
+
     std::vector<double> xValue;
     std::vector<double> yValue;
     std::vector<double> zValue;
@@ -225,7 +227,7 @@ static bool _pushUSDXformOpToMayaXform(
             UsdTimeCode time(timeSamples[ti]);
             if (_getXformOpAsVec3d(xformop, value, time)) {
                 xValue[ti]=value[0]; yValue[ti]=value[1]; zValue[ti]=value[2];
-                timeArray.set(MTime(timeSamples[ti]), ti);
+                timeArray.set(MTime(timeSamples[ti], timeUnit), ti);
             }
             else {
                 TF_RUNTIME_ERROR(
@@ -331,6 +333,7 @@ static bool _pushUSDXformToMayaXform(
 
     std::vector<UsdTimeCode> timeCodes;
     MTimeArray timeArray;
+    MTime::Unit timeUnit = MTime::uiUnit();
 
     if (!timeSamples.empty()) {
         // Convert all the time samples to UsdTimeCodes.
@@ -449,7 +452,7 @@ static bool _pushUSDXformToMayaXform(
         ShearYZVal[ti] = shear[2];
 
         if (!timeCode.IsDefault()) {
-            timeArray.set(MTime(timeCode.GetValue()), ti);
+            timeArray.set(MTime(timeCode.GetValue(), timeUnit), ti);
         }
     }
 

@@ -159,11 +159,12 @@ UsdMaya_ReadJob::Read(std::vector<MDagPath>* addedDagPaths)
             stageInterval.SetMax(stage->GetEndTimeCode());
         }
 
+        MTime::Unit timeUnit = MTime::uiUnit();
         if (stageInterval.GetMin() < currentMinTime.value()) {
-            MAnimControl::setMinTime(MTime(stageInterval.GetMin()));
+            MAnimControl::setMinTime(MTime(stageInterval.GetMin(), timeUnit));
         }
         if (stageInterval.GetMax() > currentMaxTime.value()) {
-            MAnimControl::setMaxTime(MTime(stageInterval.GetMax()));
+            MAnimControl::setMaxTime(MTime(stageInterval.GetMax(), timeUnit));
         }
     }
 
