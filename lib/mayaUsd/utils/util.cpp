@@ -2454,10 +2454,12 @@ float UsdMayaUtil::ConvertMTimeUnitToFloat(const MTime::Unit &unit) {
         {
             ret = 80.f;
         } break;
+#if MAYA_API_VERSION >= 20200000
         case MTime::k90FPS:
         {
             ret = 90.f;
         } break;
+#endif
         case MTime::k100FPS:
         {
             ret = 100.f;
