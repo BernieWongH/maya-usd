@@ -32,7 +32,7 @@
 
 PXR_NAMESPACE_USING_DIRECTIVE
 
-MAYAUSD_NS_DEF {
+namespace MAYAUSD_NS_DEF {
 
 /* static */
 MSyntax
@@ -52,8 +52,8 @@ MayaUSDImportCommand::createSyntax()
     syntax.addFlag(kAssemblyRepFlag,
                    UsdMayaJobImportArgsTokens->assemblyRep.GetText(),
                    MSyntax::kString);
-    syntax.addFlag(kInstanceModeFlag,
-                   UsdMayaJobImportArgsTokens->instanceMode.GetText(),
+    syntax.addFlag(kImportInstancesFlag,
+                   UsdMayaJobImportArgsTokens->importInstances.GetText(),
                    MSyntax::kString);
     syntax.addFlag(kMetadataFlag,
                    UsdMayaJobImportArgsTokens->metadata.GetText(),
