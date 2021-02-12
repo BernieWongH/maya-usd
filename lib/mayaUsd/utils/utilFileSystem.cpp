@@ -155,7 +155,7 @@ std::string UsdMayaUtilFileSystem::getUniqueFileName(
     return boost::filesystem::unique_path(pathModel).generic_string();
 }
 
-bool UsdMayaUtilFileSystem::isDirectory(const char* dirPath)
+bool UsdMayaUtilFileSystem::isDirectory(const std::string &dirPath)
 {
     // TODO: (yliangsiew) Is there a platform wrapper somewhere so I can implement the OS native
     // calls for something simple like this without having to add yet another dependency on Boost?
@@ -163,14 +163,14 @@ bool UsdMayaUtilFileSystem::isDirectory(const char* dirPath)
     return boost::filesystem::is_directory(p);
 }
 
-bool UsdMayaUtilFileSystem::isFile(const char* filePath)
+bool UsdMayaUtilFileSystem::isFile(const std::string& filePath)
 {
     boost::system::error_code ec;
     bool                      bStat = boost::filesystem::is_regular_file(filePath, ec);
     return bStat;
 }
 
-bool UsdMayaUtilFileSystem::pathAppendPath(char* a, const char* b)
+bool UsdMayaUtilFileSystem::pathAppendPath(std::string &a, const std::string &b)
 {
     // TODO: (yliangsiew) Is there a platform wrapper somewhere so I can implement the OS native
     // calls for something simple like this without having to add yet another dependency on Boost?
@@ -180,8 +180,7 @@ bool UsdMayaUtilFileSystem::pathAppendPath(char* a, const char* b)
     boost::filesystem::path aPath(a);
     boost::filesystem::path bPath(b);
     aPath /= b;
-    memcpy(a, aPath.c_str(), aPath.size());
-    memset(a + aPath.size(), 0, 1);
+    a.assign(aPath.c_str());
     return true;
 }
 
@@ -204,14 +203,12 @@ UsdMayaUtilFileSystem::writeToFilePath(const char* filePath, const void* buffer,
     return size;
 }
 
-void UsdMayaUtilFileSystem::pathStripPath(char* filePath)
+void UsdMayaUtilFileSystem::pathStripPath(std::string &filePath)
 {
     // TODO: (yliangsiew) Again, need a platform layer I can write simpler versions of these for to
     // avoid using boost.
     boost::filesystem::path p(filePath);
     boost::filesystem::path filename = p.filename();
-    memcpy(filePath, filename.c_str(), filename.size());
-    memset(filePath + filename.size(), 0, 1);
-
+    filePath.assign(filename.c_str());
     return;
 }
